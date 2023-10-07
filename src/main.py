@@ -130,6 +130,46 @@ def clean_narrative(text: str) -> str:
     return sent
 
 
+def fill_variables(df: pd.DataFrame, vm: pd.DataFrame) -> pd.DataFrame:
+    """
+    Replace values in a DataFrame based on a mapping provided by another DataFrame.
+
+    This function iterates through each column in the primary DataFrame (`df`) and checks for the presence of that
+    column in the mapping DataFrame (`vm`). If the column is found in the mapping DataFrame, the values in the primary
+    dataframe are replaced based on the mapping. If no mapping exists for a specific value, the original value remains
+    unchanged.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The primary DataFrame containing the data whose values may need to be replaced.
+    vm : pd.DataFrame
+        The mapping DataFrame. Each column name should match a potential column name in `df`, and the values in the
+        columns should correspond to the mapping from old values to new values.
+
+    Returns
+    -------
+    pd.DataFrame
+        A new DataFrame with values replaced based on the mapping provided by `vm`.
+
+    """
+    final_dict = {}
+    for col in df.columns:
+        if col in list(vm):
+            temp_list = []
+            for j in df[col]:
+                try:
+                    mapped_value = vm[col][str(j)]
+                    temp_list.append(mapped_value)
+                except Exception:
+                    temp_list.append(j)
+            final_dict[col] = temp_list
+        else:
+            final_dict[col] = df[col].values
+
+    return pd.DataFrame(final_dict)
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -150,3 +190,7 @@ if __name__ == "__main__":
     # preprocess narrative
     df_1["text"] = df_1["narrative"].apply(clean_narrative)
     print(df_1.iloc[1].T)
+
+    # fill variables
+    df_final_1 = fill_variables(df_1, vm_1)
+    print(df_final_1.iloc[1].T)
