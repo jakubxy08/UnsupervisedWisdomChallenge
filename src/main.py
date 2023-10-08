@@ -391,6 +391,33 @@ def generate_clusters(
     )
 
 
+def score_clusters(clusters: HDBSCAN, prob_threshold: float = 0.05) -> tuple[int, float]:
+    """
+    Evaluate the given clusters by calculating the number of unique labels and the cost based on probabilities.
+
+    Parameters
+    ----------
+    clusters : HDBSCAN
+        The HDBSCAN object after fitting data, containing labels and membership probabilities for each data point.
+    prob_threshold : float, optional
+        The threshold below which a data point's cluster membership probability is considered uncertain or noisy.
+
+    Returns
+    -------
+    tuple[int, float]
+        A tuple containing:
+        1. The number of unique clusters (label_count).
+        2. The cost, represented as the fraction of data points with probabilities below the given threshold.
+
+    """
+    cluster_labels = clusters.labels_
+    label_count = len(np.unique(cluster_labels))
+    total_num = len(clusters.labels_)
+    cost = np.count_nonzero(clusters.probabilities_ < prob_threshold) / total_num
+
+    return label_count, cost
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
