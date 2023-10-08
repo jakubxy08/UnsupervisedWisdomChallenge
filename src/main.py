@@ -1,10 +1,14 @@
 """Analysis of unsupervised wisdom data."""
 
 import json
+import os
+import pickle
 import re
+import time
 
 import nltk
 import numpy as np
+import openai
 import pandas as pd
 import spacy
 import torch
@@ -293,6 +297,58 @@ def create_untext(df_final: pd.DataFrame) -> None:
     df_final["untext"] = untext
 
 
+def create_embedding(x: list[str], filename: str = "untext_embed_final", step: int = 100) -> np.ndarray:
+    """
+    Generate embeddings for a list of text using the OpenAI's embedding model.
+
+    If embeddings for the input list have already been saved with the given filename, they will be loaded from the file
+    instead of recomputing them.
+
+    Parameters
+    ----------
+    x : list[str]
+        List of text strings for which embeddings are to be generated.
+
+    filename : str, default="untext_embed_final"
+        The filename (without extension) under which embeddings are saved/loaded as a pickle file.
+
+    step : int, default=100
+        The batch size to use when making calls to the OpenAI embedding model. Helps in sending batches of text for
+        embedding generation rather than one by one.
+
+    Returns
+    -------
+    embed : np.ndarray
+        A numpy array containing the embeddings for each text string in 'x'.
+
+    Notes
+    -----
+    The function uses OpenAI's `text-embedding-ada-002` model to generate the embeddings. If making frequent requests,
+    remember that there may be rate limits, hence the function incorporates a sleep time between successive calls.
+
+    """
+    if os.path.exists(f"{filename}.pkl"):
+        with open(f"{filename}.pkl", "rb") as f:
+            embed = pickle.load(f)
+    else:
+        size = len(x)
+        embeds = []
+        for i in trange(0, size, step):
+            k = size if i + step - 1 > size else i + step
+            response = openai.Embedding.create(input=x[i:k], model="text-embedding-ada-002")["data"]
+            for j in range(len(response)):
+                ed = response[j]["embedding"]
+                embeds.append(ed)
+            time.sleep(1)
+
+        embed = np.array(embeds)
+        print(embed.shape)
+        with open(f"{filename}.pkl", "wb") as f:
+            pickle.dump(embed, f)
+
+    return embed
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -317,6 +373,12 @@ if __name__ == "__main__":
     # fill variables
     df_final_1 = fill_variables(df_1, vm_1)
     print(df_final_1.iloc[1].T)
-    
+
     # create untext
     create_untext(df_final_1)
+
+    # create untext embedding
+    openai.api_key = "your_key"
+    x_1 = df_final_1["untext"].tolist()
+    embed_1 = create_embedding(x_1, "untext_embed_final_oo")
+    print(embed_1.shape)
