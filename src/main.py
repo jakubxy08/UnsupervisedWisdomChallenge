@@ -1,5 +1,4 @@
 """Analysis of unsupervised wisdom data."""
-
 import json
 import os
 import pickle
@@ -16,7 +15,7 @@ import spacy
 import torch
 import umap
 from hdbscan.hdbscan_ import HDBSCAN
-from hyperopt import fmin, partial, space_eval, STATUS_OK, tpe, Trials
+from hyperopt import fmin, hp, partial, space_eval, STATUS_OK, tpe, Trials
 from nltk.corpus import stopwords, wordnet as wn
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
@@ -524,6 +523,49 @@ def bayesian_search(
     return best_params, best_clusters, trials
 
 
+def search_param(embed: np.ndarray) -> tuple[Any, object, Trials]:
+    """
+    Perform bayesian search on hyperopt hyperparameter space to find the best parameters for clustering.
+
+    Function inspired by: https://www.drivendata.org/competitions/217/cdc-fall-narratives/community-code/52/
+    The function searches for optimal hyperparameters for clustering using the HDBSCAN algorithm. It uses the hyperopt
+    library to conduct a Bayesian search over a predefined hyperparameter space.
+
+    Parameters
+    ----------
+    embed : np.ndarray
+        Embeddings for which clustering parameters need to be optimized.
+
+    Returns
+    -------
+    best_param_use : Any
+        Dictionary containing the best parameters found during the search.
+
+    best_clusters_use : object
+        HDBSCAN clustering object resulting from using the best parameters on the provided embeddings.
+
+    trials_use : Trials
+        Trials object from hyperopt containing information about all the trials conducted during the search.
+
+    """
+    hspace = {
+        "n_neighbors": hp.choice("n_neighbors", range(3, 25)),
+        "n_components": hp.choice("n_components", [3]),
+        "min_cluster_size": hp.choice("min_cluster_size", [50, 100, 150]),
+        "random_state": 33,
+    }
+
+    label_lower = 30
+    label_upper = 100
+    max_evals = 100
+
+    best_param_use, best_clusters_use, trials_use = bayesian_search(
+        embed, space=hspace, label_lower=label_lower, label_upper=label_upper, max_evals=max_evals
+    )
+
+    return best_param_use, best_clusters_use, trials_use
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -557,3 +599,6 @@ if __name__ == "__main__":
     x_1 = df_final_1["untext"].tolist()
     embed_1 = create_embedding(x_1, "untext_embed_final_oo")
     print(embed_1.shape)
+
+    # search optimal parameters
+    best_param_use_1, best_clusters_use_1, trials_use_1 = search_param(embed_1)
