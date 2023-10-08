@@ -15,6 +15,7 @@ import spacy
 import torch
 import umap
 from hdbscan.hdbscan_ import HDBSCAN
+from hyperopt import STATUS_OK
 from nltk.corpus import stopwords, wordnet as wn
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
@@ -416,6 +417,57 @@ def score_clusters(clusters: HDBSCAN, prob_threshold: float = 0.05) -> tuple[int
     cost = np.count_nonzero(clusters.probabilities_ < prob_threshold) / total_num
 
     return label_count, cost
+
+
+def objective(params: dict, embeddings: np.ndarray, label_lower: int, label_upper: int) -> dict:
+    """
+    Objective function for hyperparameter optimization with hyperopt.
+
+    Function inspired by: https://www.drivendata.org/competitions/217/cdc-fall-narratives/community-code/52/
+    Evaluates the clustering results given specific hyperparameters, returning the associated loss.
+    The loss incorporates constraints on the desired number of clusters.
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary containing the hyperparameters to be optimized, including:
+        - n_neighbors: Number of neighboring points for UMAP.
+        - n_components: Number of dimensions for UMAP dimensionality reduction.
+        - min_cluster_size: Minimum cluster size for HDBSCAN.
+        - random_state: Seed for reproducibility in UMAP.
+    embeddings : np.ndarray
+        Array of embeddings for which clustering should be performed.
+    label_lower : int
+        Minimum desired number of unique cluster labels.
+    label_upper : int
+        Maximum desired number of unique cluster labels.
+
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - loss: A value representing the optimization target, lower is better.
+        - label_count: The number of unique clusters generated.
+        - status: Status of the optimization, typically STATUS_OK for hyperopt.
+
+    """
+    clusters, _ = generate_clusters(
+        embeddings,
+        n_neighbors=params["n_neighbors"],
+        n_components=params["n_components"],
+        min_cluster_size=params["min_cluster_size"],
+        random_state=params["random_state"],
+    )
+
+    label_count, cost = score_clusters(clusters, prob_threshold=0.05)
+    # 15% penalty on the cost function if outside the desired range of groups
+    if (label_count < label_lower) | (label_count > label_upper):
+        penalty = 0.15
+    else:
+        penalty = 0
+
+    loss = cost + penalty
+    return {"loss": loss, "label_count": label_count, "status": STATUS_OK}
 
 
 if __name__ == "__main__":
