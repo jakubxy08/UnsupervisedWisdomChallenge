@@ -6,12 +6,15 @@ import pickle
 import re
 import time
 
+import hdbscan
 import nltk
 import numpy as np
 import openai
 import pandas as pd
 import spacy
 import torch
+import umap
+from hdbscan.hdbscan_ import HDBSCAN
 from nltk.corpus import stopwords, wordnet as wn
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
@@ -347,6 +350,45 @@ def create_embedding(x: list[str], filename: str = "untext_embed_final", step: i
             pickle.dump(embed, f)
 
     return embed
+
+
+def generate_clusters(
+    message_embeddings: np.ndarray, n_neighbors: int, n_components: int, min_cluster_size: int, random_state: int = None
+) -> tuple[HDBSCAN, np.ndarray]:
+    """
+    Generate clusters from the provided message embeddings using UMAP for dimensionality reduction and HDBSCAN.
+
+    Parameters
+    ----------
+    message_embeddings : np.ndarray
+        Array containing the embeddings for each message.
+    n_neighbors : int
+        Number of neighboring points used in local neighborhood for UMAP.
+    n_components : int
+        Number of dimensions to which the data should be reduced using UMAP.
+    min_cluster_size : int
+        Minimum cluster size for HDBSCAN. Smaller clusters are treated as noise.
+    random_state : int, optional
+        The seed used by the random number generator for UMAP. Defaults to None.
+
+    Returns
+    -------
+    tuple[HDBSCAN, np.ndarray]
+        A tuple containing:
+        1. An HDBSCAN object fitted with the UMAP reduced embeddings.
+        2. The reduced message embeddings after applying UMAP.
+
+    """
+    umap_embeddings = umap.UMAP(
+        n_neighbors=n_neighbors, n_components=n_components, metric="cosine", random_state=random_state
+    ).fit_transform(message_embeddings)
+
+    return (
+        hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, metric="euclidean", cluster_selection_method="eom").fit(
+            umap_embeddings
+        ),
+        umap_embeddings,
+    )
 
 
 if __name__ == "__main__":
