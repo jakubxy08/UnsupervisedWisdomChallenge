@@ -5,6 +5,7 @@ import os
 import pickle
 import re
 import time
+from typing import Any
 
 import hdbscan
 import nltk
@@ -15,7 +16,7 @@ import spacy
 import torch
 import umap
 from hdbscan.hdbscan_ import HDBSCAN
-from hyperopt import STATUS_OK
+from hyperopt import fmin, partial, space_eval, STATUS_OK, tpe, Trials
 from nltk.corpus import stopwords, wordnet as wn
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
@@ -468,6 +469,59 @@ def objective(params: dict, embeddings: np.ndarray, label_lower: int, label_uppe
 
     loss = cost + penalty
     return {"loss": loss, "label_count": label_count, "status": STATUS_OK}
+
+
+def bayesian_search(
+    embeddings: np.ndarray, space: dict, label_lower: int, label_upper: int, max_evals: int = 100
+) -> tuple[Any, HDBSCAN, Trials]:
+    """
+    Perform Bayesian optimization using hyperopt to search for optimal hyperparameters for clustering.
+
+    Function inspired by: https://www.drivendata.org/competitions/217/cdc-fall-narratives/community-code/52/
+    This function searches the hyperparameter space to find the best set of parameters that minimizes the objective
+    function defined for clustering. The objective function aims to find optimal clustering parameters based on
+    certain constraints such as desired number of clusters.
+
+    Parameters
+    ----------
+    embeddings : np.ndarray
+        Array of embeddings for which clustering should be performed.
+    space : dict
+        Hyperparameter space for hyperopt, defining the range and distribution for each hyperparameter.
+    label_lower : int
+        Minimum desired number of unique cluster labels.
+    label_upper : int
+        Maximum desired number of unique cluster labels.
+    max_evals : int, optional
+        Maximum number of evaluations during the Bayesian optimization. Defaults to 100.
+
+    Returns
+    -------
+    tuple[Any, HDBSCAN, Trials]
+        A tuple containing:
+        - best_params: Dictionary of best hyperparameters found.
+        - best_clusters: HDBSCAN object fitted with the embeddings using the best hyperparameters.
+        - trials: hyperopt Trials object containing details of all the evaluations.
+
+    """
+    trials = Trials()
+    fmin_objective = partial(objective, embeddings=embeddings, label_lower=label_lower, label_upper=label_upper)
+    best = fmin(fmin_objective, space=space, algo=tpe.suggest, max_evals=max_evals, trials=trials)
+
+    best_params = space_eval(space, best)
+    print("best:")
+    print(best_params)
+    print(f"label count: {trials.best_trial['result']['label_count']}")
+
+    best_clusters, _ = generate_clusters(
+        embeddings,
+        n_neighbors=best_params["n_neighbors"],
+        n_components=best_params["n_components"],
+        min_cluster_size=best_params["min_cluster_size"],
+        random_state=best_params["random_state"],
+    )
+
+    return best_params, best_clusters, trials
 
 
 if __name__ == "__main__":
