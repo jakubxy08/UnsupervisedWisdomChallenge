@@ -4,9 +4,14 @@ import json
 import re
 
 import nltk
+import numpy as np
 import pandas as pd
+import spacy
 import torch
-from tqdm import tqdm
+from nltk.corpus import stopwords, wordnet as wn
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+from tqdm import tqdm, trange
 
 medical_terms = {
     "&": "and",
@@ -170,6 +175,124 @@ def fill_variables(df: pd.DataFrame, vm: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(final_dict)
 
 
+def create_untext(df_final: pd.DataFrame) -> None:
+    """
+    Process the 'text' column in a DataFrame, removing specific words and applying various NLP transformations.
+
+    The function performs several preprocessing tasks on the 'text' column of the input DataFrame:
+    1. Extracts unique values from the 'race' column.
+    2. Gathers synonyms for the words 'fall' and 'patient'.
+    3. Processes each row in the DataFrame, applying:
+        - Value extraction for multiple columns.
+        - Contractions expansion.
+        - Removal of stopwords, specified strings, and synonyms.
+        - Tokenization, stemming, and lemmatization.
+    4. After processing, the cleaned text is stored in a new column 'untext' in the original DataFrame.
+
+    Parameters
+    ----------
+    df_final : pd.DataFrame
+        Input DataFrame containing the 'text' column to be processed and other columns used for the extraction
+        of strings to be removed from the text.
+
+    Returns
+    -------
+    None
+        The function modifies the input DataFrame in-place, adding the 'untext' column.
+
+    """
+    diag, num = np.unique(df_final["race"], return_counts=True)
+    pd.DataFrame({"Column": diag, "Data Points": num})
+
+    synonyms_fall = {lemma.name().lower() for syn in wn.synsets("fall") for lemma in syn.lemmas()}
+    synonyms_fall.update(["fell", "falling", "fallen", "clinical", "diagnosis", "onto", "closed"])
+    synonyms_patient = {lemma.name().lower() for syn in wn.synsets("patient") for lemma in syn.lemmas()}
+    synonyms = synonyms_fall.union(synonyms_patient)
+
+    nlp = spacy.load("en_core_web_sm")
+
+    untext = []
+    for i in trange(df_final.shape[0]):
+        words = []
+        for col in [
+            "age",
+            "sex",
+            "race",
+            "other_race",
+            "hispanic",
+            "diagnosis",
+            "other_diagnosis",
+            "diagnosis_2",
+            "other_diagnosis_2",
+            "body_part",
+            "body_part_2",
+            "disposition",
+            "location",
+            "fire_involvement",
+            "alcohol",
+            "drug",
+            "product_1",
+            "product_2",
+            "product_3",
+        ]:
+            val = str(df_final[col].iloc[i])
+            if val != "nan":
+                words.append(val)
+
+        text = df_final["text"].iloc[i]
+        strings_to_remove = words
+
+        ps = PorterStemmer()
+        stop_words = set(stopwords.words("english"))
+        text = text.lower().replace(r"/'t* ", " not ")
+
+        contractions = {
+            "can't": "cannot",
+            "won't": "will not",
+            "shan't": "shall not",
+            "don't": "do not",
+            "doesn't": "does not",
+            "didn't": "did not",
+            "isn't": "is not",
+            "aren't": "are not",
+            "wasn't": "was not",
+            "weren't": "were not",
+            # Add more contractions if needed
+        }
+
+        # Create a regex pattern for finding the contractions in the text
+        pattern = re.compile(r"\b(" + "|".join(contractions.keys()) + r")\b")
+
+        # Replace the contraction with its expanded form
+        text = pattern.sub(lambda x: contractions[x.group(0)], text)
+        # print(text)
+
+        # stemmed_text_words = [ps.stem(w) for w in word_tokenize(text)]
+        # print(stemmed_text_words)
+        stemmed_strings_to_remove = {ps.stem(w) for s in strings_to_remove for w in word_tokenize(s.lower())}
+        result_words = [
+            word
+            for word in word_tokenize(text)
+            if ps.stem(word.lower()) not in stemmed_strings_to_remove
+            and word.lower() not in stop_words
+            and word.lower() not in synonyms
+        ]
+        result_text = " ".join(result_words)
+        for char in [".", ":"]:
+            result_text = result_text.replace(char, " ")
+
+        result_text = re.sub(r"\s+", " ", result_text)
+        # print(result_text)
+        # print()
+        doc = nlp(result_text)
+        rkw = ""
+        for token in doc:
+            rkw = rkw + token.lemma_ + " "
+        untext.append(result_text)
+
+    df_final["untext"] = untext
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -194,3 +317,6 @@ if __name__ == "__main__":
     # fill variables
     df_final_1 = fill_variables(df_1, vm_1)
     print(df_final_1.iloc[1].T)
+    
+    # create untext
+    create_untext(df_final_1)
