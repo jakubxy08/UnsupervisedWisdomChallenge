@@ -4,6 +4,7 @@ import os
 import pickle
 import re
 import time
+from collections import Counter
 from typing import Any
 
 import hdbscan
@@ -740,6 +741,71 @@ def plot_circle_chart(values: list[float], labels: list[str], title: str) -> Non
     plt.show()
 
 
+def preprocess_product_data(df: pd.DataFrame, vm: pd.DataFrame, top_products: int = 6) -> tuple[list[float], list[str]]:
+    """
+    Preprocess product data to consolidate and get top products based on their occurrences.
+
+    This function aggregates product data from multiple columns, calculates the percentage of each
+    product's occurrence, and returns a list of percentage values and labels for the top products.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The input dataframe containing product data in columns "product_1", "product_2", and "product_3".
+
+    vm : pd.DataFrame
+        A value mapping dataframe that maps product codes to their respective names.
+
+    top_products : int, optional (default=6)
+        The number of top products to consider for output.
+
+    Returns
+    -------
+    tuple[list[float], list[str]]
+        A tuple containing two lists:
+        1. List of percentage values of the top products.
+        2. List of labels corresponding to the top products. The last label is always "OTHERS", representing the
+        combined percentage of all other products.
+
+    Notes
+    -----
+    It's assumed that the product columns ("product_1", "product_2", and "product_3") have numeric codes and that
+    the 'vm' dataframe provides a mapping from these codes to product names.
+
+    """
+    p1 = df["product_1"].tolist()
+    p2 = df["product_2"].tolist()
+    p3 = df["product_3"].tolist()
+
+    for p in p2:
+        if p != 0:
+            p1.append(p)
+
+    for p in p3:
+        if p != 0:
+            p1.append(p)
+
+    count_dict = Counter(p1)
+    total_count = sum(count_dict.values())
+    sorted_dict = dict(sorted(count_dict.items(), key=lambda item: item[1], reverse=True))
+    for item, count in sorted_dict.items():
+        percentage = (count / total_count) * 100
+        sorted_dict[item] = percentage
+
+    values = []
+    labels = []
+    s = 0.0
+    for i, (item, count) in enumerate(sorted_dict.items()):
+        if i < top_products:
+            values.append(count)
+            s = s + count
+            labels.append(vm["product_1"][str(item)].split("-")[1])
+    values.append(100 - s)
+    labels.append(" OTHERS")
+
+    return values, labels
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -862,3 +928,8 @@ if __name__ == "__main__":
     keywords = gen_keywords(all_text_2)
     for kw in keywords:
         print(kw)
+
+    # plot most common items
+    values_1, labels_1 = preprocess_product_data(df_1, vm_1)
+    plot_circle_chart(values_1, labels_1, "Percentage of things connected with falls")
+    
