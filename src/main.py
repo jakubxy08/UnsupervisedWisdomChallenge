@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 import spacy
 import torch
 import umap
+import yake
 from hdbscan.hdbscan_ import HDBSCAN
 from hyperopt import fmin, hp, partial, space_eval, STATUS_OK, tpe, Trials
 from nltk.corpus import stopwords, wordnet as wn
@@ -627,6 +628,48 @@ def create_plot_3d(umap_embeddings: np.ndarray, clusters: HDBSCAN, label_count: 
     return fig
 
 
+def gen_keywords(text: str, num_keywords: int = 100) -> list[tuple[str, float]]:
+    """
+    Extract keywords from a given text using the YAKE (Yet Another Keyword Extractor) algorithm.
+
+    Function inspired by: https://www.drivendata.org/competitions/217/cdc-fall-narratives/community-code/11/
+    This function is designed to take a text input and return a specified number of keywords.
+    It employs the YAKE algorithm, which is unsupervised and language-independent, to detect key phrases in the text
+    based on their statistical, positional, and syntactic features.
+
+    Parameters
+    ----------
+    text : str
+        The input text from which keywords will be extracted.
+
+    num_keywords : int, optional (default=100)
+        The number of keywords to be returned from the extraction process.
+
+    Returns
+    -------
+    list[tuple[str, float]]
+        A list of tuples where each tuple contains a keyword and its corresponding YAKE score. The list is ordered by
+        the score, with the most relevant keywords appearing first.
+
+    """
+    language = "en"
+    max_ngram_size = 1
+    deduplication_threshold = 0.9
+    deduplication_algo = "seqm"
+    window_size = 1
+
+    custom_kw_extractor = yake.KeywordExtractor(
+        lan=language,
+        n=max_ngram_size,
+        dedupLim=deduplication_threshold,
+        dedupFunc=deduplication_algo,
+        windowsSize=window_size,
+        top=num_keywords,
+        features=None,
+    )
+    return custom_kw_extractor.extract_keywords(text)
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -675,3 +718,24 @@ if __name__ == "__main__":
     # plot clusters
     fig_1a = create_plot_3d(umap_embeddings_1, clusters_1, label_count_1, True, "Clusters for 'untext' data")
     # fig_1a.show()
+
+    # plot cluster without noise
+    fig_1b = create_plot_3d(umap_embeddings_1, clusters_1, label_count_1, False,
+                            "Clusters for 'untext' data without noise")
+
+    # generate keywords
+    df_final_1["untext"] = df_final_1["untext"].apply(lambda x: str(x))
+    for idx in [0]:
+        print()
+        lbs = clusters_1.labels_.tolist()
+        vrs = [i for i in range(len(lbs)) if lbs[i] == idx]
+        print(len(vrs))
+
+    for i in range(5):
+        print(df_final_1["untext"].iloc[vrs[i]])
+
+    all_text_1 = " ".join(df_final_1["untext"])
+
+    keywords = gen_keywords(all_text_1)
+    for kw in keywords:
+        print(kw)
