@@ -18,6 +18,7 @@ import umap
 import yake
 from hdbscan.hdbscan_ import HDBSCAN
 from hyperopt import fmin, hp, partial, space_eval, STATUS_OK, tpe, Trials
+from matplotlib import pyplot as plt
 from nltk.corpus import stopwords, wordnet as wn
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
@@ -706,6 +707,39 @@ def create_summary(documents: str, model: str = "gpt-4") -> str:
     return response["choices"][0]["message"]["content"]
 
 
+def plot_circle_chart(values: list[float], labels: list[str], title: str) -> None:
+    """
+    Plot a circle (pie) chart using the given values and labels.
+
+    Parameters
+    ----------
+    values : list[float]
+        A list of numeric values to represent in the circle chart.
+
+    labels : list[str]
+        A list of string labels corresponding to each value in the 'values' list.
+
+    title : str
+        The title for the circle chart.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    This function uses matplotlib's pie chart plotting capabilities to render the chart.
+    The circle chart starts at a 90-degree angle, and a legend is displayed on the right side of the chart.
+    The percentage of each section is displayed on the chart.
+
+    """
+    plt.figure(figsize=(7, 10))
+    plt.pie(values, autopct="%1.1f%%", startangle=90)
+    plt.title(title)
+    plt.legend(labels, loc="right", bbox_to_anchor=(1.7, 0.5))
+    plt.show()
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -804,7 +838,7 @@ if __name__ == "__main__":
     # Save clusters
     with open("clus_data.pkl", "wb") as f:
         pickle.dump([clusters_1, clusters_2, umap_embeddings_1, umap_embeddings_2], f)
-        
+
     # create summary of clusters
     summary_clusters = {},
     for idx in range(80):
@@ -818,3 +852,13 @@ if __name__ == "__main__":
     # Save summary of clusters
     with open("summary_clusters.pkl", "wb") as f:
         pickle.dump(summary_clusters, f)
+
+    # sample summary
+    for i in [0, 1, 5, 6]:
+        print(summary_clusters[i])
+
+    # generate keywords
+    all_text_2 = " ".join(df_final_1["text"])
+    keywords = gen_keywords(all_text_2)
+    for kw in keywords:
+        print(kw)
