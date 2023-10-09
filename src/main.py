@@ -670,6 +670,42 @@ def gen_keywords(text: str, num_keywords: int = 100) -> list[tuple[str, float]]:
     return custom_kw_extractor.extract_keywords(text)
 
 
+def create_summary(documents: str, model: str = "gpt-4") -> str:
+    """
+    Generate a concise summary of the provided documents using the specified model, defaulting to "gpt-4".
+
+    The function uses OpenAI's ChatCompletion API to create a summary based on the input documents.
+    By providing the documents and specifying a model (e.g., "gpt-4"), the function instructs the model
+    to condense the information and return a summary.
+
+    Parameters
+    ----------
+    documents : str
+        The input text or content that needs to be summarized.
+
+    model : str, optional (default="gpt-4")
+        The name of the OpenAI model to be used for summarization. Defaults to "gpt-4".
+
+    Returns
+    -------
+    str
+        A concise summary of the input documents.
+
+    """
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=[
+            {
+                "role": "user",
+                "content": f'Create summary of the documents.\n\nDocuments:\n"""\n{documents}\n"""\n\nTopic:',
+            },
+        ],
+        temperature=0,
+        top_p=1,
+    )
+    return response["choices"][0]["message"]["content"]
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -739,3 +775,46 @@ if __name__ == "__main__":
     keywords = gen_keywords(all_text_1)
     for kw in keywords:
         print(kw)
+
+    # create embedding for whole narrative
+    x_2 = df_final_1["text"].tolist()
+    embed_2 = create_embedding(x_2, filename="text_embed_final_oo")
+    print(embed_2.shape)
+
+    # search optimal parameters
+    best_param_use_2, best_clusters_use_2, trials_use_2 = search_param(embed_2)
+
+    # create clusters
+    clusters_2, umap_embeddings_2 = generate_clusters(
+        embed_2, n_neighbors=5, n_components=3, min_cluster_size=100, random_state=31
+    )
+    label_count_2, cost_2 = score_clusters(clusters_2)
+    print(label_count_2, cost_2)
+    print(np.sum(clusters_2.labels_ == -1))
+
+    # plot clusters
+    fig_2a = create_plot_3d(umap_embeddings_2, clusters_2, label_count_2, True, "Clusters for 'text' data")
+    # fig_2a.show()
+
+    # plot clusters without noise
+    fig_2b = create_plot_3d(umap_embeddings_2, clusters_2, label_count_2, False,
+                            "Clusters for 'text' data without noise")
+    # fig_2b.show()
+
+    # Save clusters
+    with open("clus_data.pkl", "wb") as f:
+        pickle.dump([clusters_1, clusters_2, umap_embeddings_1, umap_embeddings_2], f)
+        
+    # create summary of clusters
+    summary_clusters = {},
+    for idx in range(80):
+        lbs = clusters_2.labels_.tolist()
+        vrs = [i for i in range(len(lbs)) if lbs[i] == idx]
+        docs = "\n".join(df_final_1["text"].iloc[vrs[:30]].values)
+        desc = create_summary(docs)
+        summary_clusters[idx] = [desc, len(vrs)]
+        time.sleep(1)
+
+    # Save summary of clusters
+    with open("summary_clusters.pkl", "wb") as f:
+        pickle.dump(summary_clusters, f)
