@@ -11,6 +11,7 @@ import nltk
 import numpy as np
 import openai
 import pandas as pd
+import plotly.graph_objects as go
 import spacy
 import torch
 import umap
@@ -19,6 +20,7 @@ from hyperopt import fmin, hp, partial, space_eval, STATUS_OK, tpe, Trials
 from nltk.corpus import stopwords, wordnet as wn
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
+from plotly.graph_objs import Figure
 from tqdm import tqdm, trange
 
 medical_terms = {
@@ -566,6 +568,65 @@ def search_param(embed: np.ndarray) -> tuple[Any, object, Trials]:
     return best_param_use, best_clusters_use, trials_use
 
 
+def create_plot_3d(umap_embeddings: np.ndarray, clusters: HDBSCAN, label_count: int, flag: bool, title: str) -> Figure:
+    """
+    Create a 3D scatter plot visualizing the clusters from HDBSCAN in an embedded space.
+
+    This function takes UMAP embeddings and their corresponding HDBSCAN cluster assignments to visualize the data
+    points in a 3D scatter plot. Each cluster will be represented by a unique color, and noise (unassigned data points)
+    will have its own designation.
+
+    Parameters
+    ----------
+    umap_embeddings : np.ndarray
+        UMAP embeddings of the data in a 3-dimensional space.
+
+    clusters : HDBSCAN
+        HDBSCAN clustering object containing cluster assignments for each data point in the embeddings.
+
+    label_count : int
+        Total number of clusters excluding noise.
+
+    flag : bool
+        If True, includes noise (data points not assigned to any cluster) in the visualization.
+        If False, only clusters are visualized.
+
+    title : str
+        Title of the plot.
+
+    Returns
+    -------
+    fig : Figure
+        A 3D scatter plot visualizing the clusters in the embedded space.
+
+    """
+    cluster_range = range(-1, label_count) if flag else range(label_count)
+    fig = go.Figure()
+    for cluster in cluster_range:
+        cluster_data = umap_embeddings[clusters.labels_ == cluster]
+
+        # Providing a name to the cluster or marking it as noise
+        name = "Noise" if cluster == -1 else f"Cluster {cluster}"
+        # Adding the cluster data to the plotly figure
+        fig.add_trace(
+            go.Scatter3d(
+                x=cluster_data[:, 0],
+                y=cluster_data[:, 1],
+                z=cluster_data[:, 2],
+                mode="markers",
+                marker=dict(size=3),
+                name=name,
+            )
+        )
+
+    # Setting the layout of the 3D plot
+    fig.update_layout(
+        title={"text": f"{title}", "y": 0.95, "x": 0.5, "xanchor": "center", "yanchor": "top"},
+        margin=dict(l=0, r=0, b=0, t=0),
+    )
+    return fig
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -602,3 +663,15 @@ if __name__ == "__main__":
 
     # search optimal parameters
     best_param_use_1, best_clusters_use_1, trials_use_1 = search_param(embed_1)
+
+    # create clusters
+    clusters_1, umap_embeddings_1 = generate_clusters(
+        embed_1, n_neighbors=13, n_components=3, min_cluster_size=100, random_state=31
+    )
+    label_count_1, cost_1 = score_clusters(clusters_1)
+    print(label_count_1, cost_1)
+    print(np.sum(clusters_1.labels_ == -1))
+
+    # plot clusters
+    fig_1a = create_plot_3d(umap_embeddings_1, clusters_1, label_count_1, True, "Clusters for 'untext' data")
+    # fig_1a.show()
