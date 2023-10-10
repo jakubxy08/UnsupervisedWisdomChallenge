@@ -25,6 +25,18 @@ from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 from plotly.graph_objs import Figure
 from tqdm import tqdm, trange
+from transformers import (
+    AutoTokenizer,
+    BertLMHeadModel,
+    BertModel,
+    BertTokenizer,
+    MvpForConditionalGeneration,
+    MvpTokenizer,
+    PreTrainedModel,
+    PreTrainedTokenizer,
+    T5ForConditionalGeneration,
+    T5Tokenizer,
+)
 
 medical_terms = {
     "&": "and",
@@ -852,6 +864,40 @@ def preprocess_location_data(df: pd.DataFrame, top_products: int = 6) -> tuple[l
     return values, labels
 
 
+def get_embedding_local(text: str, tokenizer: PreTrainedTokenizer, model: PreTrainedModel) -> np.ndarray:
+    """
+    Extract the embedding for a given text using a pre-trained model and tokenizer.
+
+    Parameters
+    ----------
+    text : str
+        The input text to be embedded.
+    tokenizer : PreTrainedTokenizer
+        The pre-trained tokenizer used for tokenization of the input text.
+    model : PreTrainedModel
+        The pre-trained model used to generate embeddings.
+
+    Returns
+    -------
+    np.ndarray
+        The embedding vector for the input text. Specifically, it returns the [CLS] token's embedding
+        as the representation of the entire sentence.
+
+    Notes
+    -----
+    The function processes the text using the given tokenizer and then uses the pre-trained model
+    to obtain the embeddings. It specifically extracts the embedding of the [CLS] token as a representation
+    of the entire input text. The function ensures no gradients are computed during the embedding extraction
+    by using the `torch.no_grad()` context manager.
+
+    """
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+    with torch.no_grad():
+        outputs = model(**inputs)
+    # Using the [CLS] embedding as the sentence representation
+    return outputs["last_hidden_state"][:, 0, :].squeeze().numpy()
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -982,3 +1028,28 @@ if __name__ == "__main__":
     # plot most common locations
     values_2, labels_2 = preprocess_location_data(df_1)
     plot_circle_chart(values_2, labels_2, "Percentage of locations where falls occur")
+
+    # extract perticipating event
+    test_questions = {
+        "body_part": "What body part with the most severe injury was affected in the fall?",
+        "product_1": "What consumer product was involved in the incident?",
+    }
+
+    mod_tok_list = [
+        (
+            T5ForConditionalGeneration.from_pretrained("google/flan-t5-base", device_map=device),
+            T5Tokenizer.from_pretrained("google/flan-t5-base", legacy=False),
+        ),
+        (
+            MvpForConditionalGeneration.from_pretrained("RUCAIBox/mvp", device_map=device),
+            MvpTokenizer.from_pretrained("RUCAIBox/mvp"),
+        ),
+        (
+            BertLMHeadModel.from_pretrained("bert-base-uncased", device_map=device),
+            AutoTokenizer.from_pretrained("bert-base-uncased"),
+        ),
+    ]
+
+    # Initialize tokenizer and model
+    tokenizer_b = BertTokenizer.from_pretrained("bert-base-uncased")
+    model_b = BertModel.from_pretrained("bert-base-uncased")
