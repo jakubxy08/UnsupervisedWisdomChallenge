@@ -898,6 +898,40 @@ def get_embedding_local(text: str, tokenizer: PreTrainedTokenizer, model: PreTra
     return outputs["last_hidden_state"][:, 0, :].squeeze().numpy()
 
 
+def similarity_score(text1: str, text2: str, tokenizer: PreTrainedTokenizer, model: PreTrainedModel) -> float:
+    """
+    Compute the cosine similarity score between two texts using their embeddings from a pre-trained model.
+
+    Parameters
+    ----------
+    text1 : str
+        The first input text.
+    text2 : str
+        The second input text.
+    tokenizer : PreTrainedTokenizer
+        The pre-trained tokenizer used for tokenization.
+    model : PreTrainedModel
+        The pre-trained model used to generate embeddings.
+
+    Returns
+    -------
+    float
+        The cosine similarity score between the two texts. A value closer to 1 indicates higher similarity
+        and a value closer to 0 indicates lower similarity.
+
+    Notes
+    -----
+    The function obtains embeddings for each text using the `get_embedding_local` function. It then computes
+    the cosine distance between the two embeddings and returns its complement (1 - cosine distance) as the
+    cosine similarity.
+
+    """
+    emb1 = get_embedding_local(text1, tokenizer, model)
+    emb2 = get_embedding_local(text2, tokenizer, model)
+    # 1 - cosine distance will give cosine similarity
+    return 1 - cosine(emb1, emb2)
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
