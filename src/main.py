@@ -806,6 +806,52 @@ def preprocess_product_data(df: pd.DataFrame, vm: pd.DataFrame, top_products: in
     return values, labels
 
 
+def preprocess_location_data(df: pd.DataFrame, top_products: int = 6) -> tuple[list[float], list[str]]:
+    """
+    Preprocess location data to consolidate and get top locations based on their occurrences.
+
+    This function aggregates location data from the "location" column, calculates the percentage of each
+    location's occurrence, and returns a list of percentage values and labels for the top locations.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The input dataframe containing location data in the "location" column.
+
+    top_products : int, optional (default=6)
+        The number of top locations to consider for output.
+
+    Returns
+    -------
+    tuple[list[float], list[str]]
+        A tuple containing two lists:
+        1. List of percentage values of the top locations.
+        2. List of labels corresponding to the top locations.
+
+    Notes
+    -----
+    It's assumed that the "location" column contains categorical or string data representing different locations.
+
+    """
+    p1 = df["location"].tolist()
+
+    count_dict = Counter(p1)
+    total_count = sum(count_dict.values())
+    sorted_dict = dict(sorted(count_dict.items(), key=lambda item: item[1], reverse=True))
+    for item, count in sorted_dict.items():
+        percentage = (count / total_count) * 100
+        sorted_dict[item] = percentage
+
+    values = []
+    labels = []
+    for i, (item, count) in enumerate(sorted_dict.items()):
+        if i < top_products:
+            values.append(count)
+            labels.append(item)
+
+    return values, labels
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -932,4 +978,7 @@ if __name__ == "__main__":
     # plot most common items
     values_1, labels_1 = preprocess_product_data(df_1, vm_1)
     plot_circle_chart(values_1, labels_1, "Percentage of things connected with falls")
-    
+
+    # plot most common locations
+    values_2, labels_2 = preprocess_location_data(df_1)
+    plot_circle_chart(values_2, labels_2, "Percentage of locations where falls occur")
