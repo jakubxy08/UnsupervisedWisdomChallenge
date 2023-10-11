@@ -1363,3 +1363,31 @@ if __name__ == "__main__":
     }
     ans_df_2 = generate_answers(best_model, best_tokenizer, type_questions, df_final_1, 27)
     print(ans_df_2.head())
+
+    # actions percentage stats
+    ans_df_3 = pd.read_csv("ans_df_3.csv")
+    print(ans_df_3.shape)
+    ans_actions = ans_df_3["action"].tolist()
+    ans_actions_2 = [str(w) for w in ans_actions]
+    # action_text = ",".join(ans_actions_2)
+
+    nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
+    values_a1, labels_a1, actions = preprocess_answers(ans_actions_2, 10, False, nlp)
+    plot_circle_chart(values_a1, labels_a1, "Actions")
+
+    # causes percentage stats
+    ans_why = ans_df_3["why"].tolist()
+    values_a2, labels_a2, whys = preprocess_answers(ans_why, 10, True, nlp)
+    plot_circle_chart(values_a2, labels_a2, "Why")
+
+    # fall type by different groups
+    tp_1 = df_final_1[["treatment_date", "age", "sex", "race", "diagnosis", "body_part", "disposition", "location",
+                       "alcohol", "drug"]]
+    tp_2 = tp_1.copy()
+    tp_2["action"] = actions
+    tp_2["why"] = whys
+    print(tp_2.shape)
+    tp_2["action"] = tp_2["action"].apply(lambda x: str(x))
+    tp_2["why"] = tp_2["why"].apply(lambda x: str(x))
+    print(tp_2.head())
+    print(tp_2[["sex", "race", "diagnosis", "body_part", "disposition", "location", "alcohol", "drug"]].describe())
