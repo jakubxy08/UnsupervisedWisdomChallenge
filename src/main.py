@@ -24,6 +24,7 @@ from nltk.corpus import stopwords, wordnet as wn
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 from plotly.graph_objs import Figure
+from scipy.spatial.distance import cosine
 from tqdm import tqdm, trange
 from transformers import (
     AutoTokenizer,
@@ -1242,6 +1243,118 @@ def prepare_stats_to_plot(
     return data
 
 
+def plot_stats(
+    data: dict[str, tuple[list[float], list[str]]],
+    x_label: str,
+    y_label: str,
+    title: str,
+    x_size: int,
+    y_size: int,
+    bar_width: float = 0.5,
+    horizontal: bool = False,
+) -> None:
+    """
+    Plot a stacked bar chart based on given statistical data.
+
+    Parameters
+    ----------
+    data : dict[str, tuple[list[float], list[str]]]
+        A dictionary containing data to be plotted. The key represents the x-axis label (like month) and the
+        value is a tuple containing:
+        - A list of percentages.
+        - A list of labels corresponding to these percentages.
+    x_label : str
+        Label for the x-axis.
+    y_label : str
+        Label for the y-axis.
+    title : str
+        Title for the plot.
+    x_size : int
+        Width of the plot figure.
+    y_size : int
+        Height of the plot figure.
+    bar_width : float, optional (default is 0.5)
+        Width of the individual bars.
+    horizontal : bool, optional (default is False)
+        If set to True, the bars are plotted horizontally; otherwise, they are plotted vertically.
+
+    Returns
+    -------
+    None
+
+    Description
+    -----------
+    The function constructs a stacked bar chart where each bar represents a key from the input dictionary.
+    Each segment of the bar is colored differently based on the labels in the tuple associated with the key.
+    The segments are stacked in the order of appearance of the labels in the `data` dictionary.
+    The x-axis represents the keys from the dictionary, while the y-axis represents the accumulated percentage.
+    The function can generate both vertical and horizontal stacked bars based on the `horizontal` parameter.
+
+    """
+    x_labels_2 = list(data.keys())
+    x_labels = [xl.replace("/", "\n") for xl in x_labels_2]
+
+    unique_labels = set()
+    for _, labels in data.values():
+        unique_labels.update(labels)
+    unique_labels = sorted(list(unique_labels))
+
+    colors = plt.cm.viridis(np.linspace(0, 1, len(unique_labels)))
+    label_to_color = dict(zip(unique_labels, colors))
+
+    r = np.arange(len(data))
+    plt.figure(figsize=(x_size, y_size))
+
+    bottoms = np.zeros(len(data))
+
+    for label in unique_labels:
+        percentages = []
+        for month_data in data.values():
+            if label in month_data[1]:
+                idx = month_data[1].index(label)
+                percentages.append(month_data[0][idx])
+            else:
+                percentages.append(0)
+
+        if horizontal:
+            plt.barh(
+                r,
+                percentages,
+                left=bottoms,
+                color=label_to_color[label],
+                height=bar_width,
+                edgecolor="grey",
+                label=label,
+            )
+        else:
+            plt.bar(
+                r,
+                percentages,
+                bottom=bottoms,
+                color=label_to_color[label],
+                width=bar_width,
+                edgecolor="grey",
+                label=label,
+            )
+        bottoms += percentages
+
+    if horizontal:
+        plt.ylabel(x_label, fontweight="bold")
+        plt.xlabel(y_label, fontweight="bold")
+        plt.yticks(list(range(len(x_labels))), x_labels)
+        plt.xlim(0, 100)
+    else:
+        plt.xlabel(x_label, fontweight="bold")
+        plt.ylabel(y_label, fontweight="bold")
+        plt.xticks(list(range(len(x_labels))), x_labels)
+        plt.ylim(0, 100)
+
+    plt.title(title, fontweight="bold")
+    plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -1453,3 +1566,8 @@ if __name__ == "__main__":
     tp_2["why"] = tp_2["why"].apply(lambda x: str(x))
     print(tp_2.head())
     print(tp_2[["sex", "race", "diagnosis", "body_part", "disposition", "location", "alcohol", "drug"]].describe())
+
+    # action type
+    t1, t2 = "sex", "action"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 6, 5, bar_width=0.5)
