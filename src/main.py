@@ -1180,6 +1180,68 @@ def preprocess_answers(
     return values, labels, input_data_2
 
 
+def prepare_stats_to_plot(
+    tp_2: pd.DataFrame, t1: str, t2: str, top_products: int = 9
+) -> dict[str, tuple[list[float], list[str]]]:
+    """
+    Prepare statistical data for plotting by aggregating the top categories based on a given threshold.
+
+    Parameters
+    ----------
+    tp_2 : pd.DataFrame
+        The DataFrame containing the data to be processed.
+    t1 : str
+        The primary column in the DataFrame based on which unique categories are extracted.
+    t2 : str
+        The secondary column containing the data to be aggregated for each unique category from `t1`.
+    top_products : int, optional (default is 9)
+        The number of top categories to consider for aggregation in the resulting data.
+
+    Returns
+    -------
+    dict[str, tuple[list[float], list[str]]]
+        A dictionary where each key represents a unique category from the `t1` column,
+        and the associated value is a tuple containing:
+        - A list of aggregated percentages of top categories from the `t2` column.
+        - A list of labels corresponding to these top categories.
+
+    Notes
+    -----
+    For each unique category in the `t1` column, the function aggregates the occurrences of each
+    category in the `t2` column, calculates its percentage, and then retains only the top categories
+    as specified by the `top_products` parameter. All other categories are grouped into a single
+    "zothers" category.
+
+    """
+    stats_data = tp_2[t1].unique().tolist()
+    data = {ld: [] for ld in stats_data}
+    for k, v in data.items():
+        x_in = tp_2[["action", "why"]][tp_2[t1] == k]
+        # print(x_in.shape)
+        input_data_2 = x_in[t2].tolist()
+
+        count_dict = Counter(input_data_2)
+        total_count = sum(count_dict.values())
+        sorted_dict = dict(sorted(count_dict.items(), key=lambda item: item[1], reverse=True))
+        for item, count in sorted_dict.items():
+            percentage = (count / total_count) * 100
+            sorted_dict[item] = percentage
+
+        values = []
+        labels = []
+        for i, (item, count) in enumerate(sorted_dict.items()):
+            if i < top_products:
+                values.append(count)
+                labels.append(item)
+
+        labels.append("zothers")
+        values.append(100 - np.sum(values))
+
+        data[k] = (values, labels)
+
+    return data
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
