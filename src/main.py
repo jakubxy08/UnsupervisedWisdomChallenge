@@ -1123,6 +1123,63 @@ def lem_sample(text: str, nlp) -> list[str]:
     return text
 
 
+def preprocess_answers(
+    input_data: str, top_products: int, if_why: bool, nlp
+) -> tuple[list[float], list[str], list[str]]:
+    """
+    Preprocess and aggregates answers from the input data.
+
+    Parameters
+    ----------
+    input_data : str
+        The raw input data containing answers to be processed.
+    top_products : int
+        The number of top products (or answers) to consider for aggregation.
+    if_why : bool
+        A flag to decide if the preprocessing involves removing the first character or lemmatization.
+    nlp :
+        The loaded spacy model to perform lemmatization, if required.
+
+    Returns
+    -------
+    tuple[list[float], list[str], list[str]]
+        - A list of aggregated percentages of top answers.
+        - A list of labels corresponding to the top answers.
+        - A list of processed input data based on the `if_why` flag.
+
+    Notes
+    -----
+    The function first decides the preprocessing step based on the `if_why` flag. If `if_why` is True,
+    it simply removes the first character from each entry in `input_data`. Otherwise, it lemmatizes
+    the entries. The function then counts the occurrences of each unique entry, calculates its
+    percentage, and returns the percentages and labels of the top answers as specified by the
+    `top_products` parameter.
+
+    """
+    if if_why:
+        input_data_2 = [t[1:] for t in input_data]
+    else:
+        input_data_2 = [lem_sample(t, nlp) for t in tqdm(input_data)]
+        # input_data_2 = lem_sample(input_data)
+    print(len(np.unique(input_data_2)))
+
+    count_dict = Counter(input_data_2)
+    total_count = sum(count_dict.values())
+    sorted_dict = dict(sorted(count_dict.items(), key=lambda item: item[1], reverse=True))
+    for item, count in sorted_dict.items():
+        percentage = (count / total_count) * 100
+        sorted_dict[item] = percentage
+
+    values = []
+    labels = []
+    for i, (item, count) in enumerate(sorted_dict.items()):
+        if i < top_products:
+            values.append(count)
+            labels.append(item)
+
+    return values, labels, input_data_2
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -1306,4 +1363,3 @@ if __name__ == "__main__":
     }
     ans_df_2 = generate_answers(best_model, best_tokenizer, type_questions, df_final_1, 27)
     print(ans_df_2.head())
-    
