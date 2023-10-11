@@ -1092,6 +1092,37 @@ def generate_answers(
     return answers_df
 
 
+def lem_sample(text: str, nlp) -> list[str]:
+    """
+    Lemmatize a given text and filters it based on specific part-of-speech tags.
+
+    Parameters
+    ----------
+    text : str
+        The input text to be lemmatized.
+    nlp :
+        The loaded spacy model to perform lemmatization.
+
+    Returns
+    -------
+    list[str]
+        A list containing lemmatized words from the input text that match the allowed part-of-speech tags.
+
+    Notes
+    -----
+    The function uses a predefined set of allowed part-of-speech tags (NOUN, ADJ, VERB, ADV) to filter
+    the lemmatized words. Only words with these tags are returned in the output list.
+
+    """
+    # nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
+    # only keep certain kinds of words
+    allowed_tags = ["NOUN", "ADJ", "VERB", "ADV"]
+    text = nlp(text[1:])
+    text = [token.lemma_ for token in text if token.pos_ in allowed_tags]
+    text = text[0] if text else ""
+    return text
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -1254,5 +1285,25 @@ if __name__ == "__main__":
     best_model, best_tokenizer = mod_tok_list[best_model_idx]
 
     # generate answers
+    final_questions = {
+        # "action": "What patient's activity took place during the fall?",
+        "action": "What was the patient doing at the time of the incident?",
+        "type": "What kind of fall took place?",
+        "who": "Who has fallen?",
+        "what": "What happened to the patient during the incident?",
+        "why": "What caused the patient to fall?",
+        "when": "When did the fall occur?",
+        "where": "Where did the fall occur?",
+        "how": "How did the fall occur?",
+    }
     ans_df_1 = generate_answers(best_model, best_tokenizer, final_questions, df_final_1, 10)
     print(ans_df_1.head())
+
+    # extract item and action
+    type_questions = {
+        "action": "What was the patient doing before the fall? Return only one verb.",
+        "why": "What item or place, had contact with the patient's body during incident? Return only one noun.",
+    }
+    ans_df_2 = generate_answers(best_model, best_tokenizer, type_questions, df_final_1, 27)
+    print(ans_df_2.head())
+    
