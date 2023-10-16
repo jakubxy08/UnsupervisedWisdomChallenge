@@ -21,6 +21,7 @@ import yake
 from hdbscan.hdbscan_ import HDBSCAN
 from hyperopt import fmin, hp, partial, space_eval, STATUS_OK, tpe, Trials
 from matplotlib import pyplot as plt
+from matplotlib.ticker import PercentFormatter
 from nltk.corpus import stopwords, wordnet as wn
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
@@ -1433,6 +1434,48 @@ def prepare_time_data(x: list[float]) -> tuple[list[str], list[str], list[str]]:
     return days, weeks, months
 
 
+def plot_histogram_perc(values: list[float | str], labels: list[str], title: str, x_label: str, y_label: str) -> None:
+    """
+    Plot a histogram showing the percentage of each label based on the given values.
+
+    Parameters
+    ----------
+    values : list[float | str]
+        List of values which might be either float or strings. These values are the instances for which the
+        frequency is to be calculated.
+    labels : list[str]
+        List of unique labels based on which the frequency will be calculated from the values.
+    title : str
+        Title of the histogram.
+    x_label : str
+        Label for the x-axis.
+    y_label : str
+        Label for the y-axis.
+
+    Returns
+    -------
+    None
+
+    Description
+    -----------
+    The function calculates the frequency (in percentage) of each label present in the 'labels' list based on
+    how many times they appear in the 'values' list. The histogram then plots these frequencies against each label.
+    The y-axis is formatted to display percentages.
+
+    """
+    # Calculate the frequency of each label
+    freqs = [100 * values.count(label) / len(values) for label in labels]
+
+    # Plot the histogram based on label order
+    plt.bar(labels, freqs, align="center")
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.xticks(rotation=45)  # Optional: To make labels more readable in case of longer strings
+    plt.gca().yaxis.set_major_formatter(PercentFormatter())
+    plt.show()
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -1704,3 +1747,15 @@ if __name__ == "__main__":
     # age distribution
     ages = df_sup_1["age"].tolist()
     plot_histogram(ages, "Age distribution", "Age", "Number of samples", bins=100)
+
+    treat_dates = df_sup_1["treatment_date"].tolist()
+    days_1, weeks_1, months_1 = prepare_time_data(treat_dates)
+
+    # time distributions
+    plot_histogram(days_1, "Days of week distribution", "Day of week", "Number of samples", bins=7)
+    plot_histogram(weeks_1, "Weeks of year distribution", "Week of year", "Number of samples", bins=52)
+    plot_histogram(months_1, "Months distribution", "Month", "Number of samples", bins=12)
+
+    # time trends by specific group
+    l_d = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    l_m = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
