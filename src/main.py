@@ -1571,3 +1571,49 @@ if __name__ == "__main__":
     t1, t2 = "sex", "action"
     data = prepare_stats_to_plot(tp_2, t1, t2)
     plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 6, 5, bar_width=0.5)
+
+    # cause type
+    t1, t2 = "sex", "why"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 6, 5, bar_width=0.5)
+
+    # action type by race
+    t1, t2 = "race", "action"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 12, 5, bar_width=0.5)
+
+    # cause type by race
+    t1, t2 = "race", "why"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 12, 5, bar_width=0.5)
+
+    # action type by disposition
+    t1, t2 = "disposition", "action"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 15, 5, bar_width=0.5)
+
+    # cause type by disposition
+    t1, t2 = "disposition", "why"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 15, 5, bar_width=0.5)
+
+    # action type by body part
+    t1, t2 = "body_part", "action"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 15, 15, bar_width=0.5, horizontal=True)
+
+    # cause type by body part
+    t1, t2 = "body_part", "why"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 15, 15, bar_width=0.5, horizontal=True)
+
+    # action by diagnosis
+    t1, t2 = "diagnosis", "action"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 15, 15, bar_width=0.5, horizontal=True)
+
+    # cause by diagnosis
+    t1, t2 = "diagnosis", "why"
+    data = prepare_stats_to_plot(tp_2, t1, t2)
+    plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 15, 15, bar_width=0.5, horizontal=True)
+
