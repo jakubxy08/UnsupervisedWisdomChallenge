@@ -1759,3 +1759,44 @@ if __name__ == "__main__":
     # time trends by specific group
     l_d = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     l_m = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+
+    # sports as a location
+    typ = "location"
+    v = 'SPORTS'
+    x_in = df_sup_1[["treatment_date", typ]][df_sup_1[typ] == v]
+    treat_dates_2 = x_in["treatment_date"].tolist()
+    days_2, weeks_2, months_2 = prepare_time_data(treat_dates_2)
+    plot_histogram_perc(days_2, l_d, f"{v} - {typ}\n Days of week distribution", "Day of week", "Percentage of samples")
+    plot_histogram_perc(months_2, l_m, f"{v} - {typ}\n Months distribution", "Month", "Percentage of samples")
+
+    # poisoning diagnosis
+    typ = "diagnosis"
+    v = '68 - POISONING'
+    x_in = df_sup_1[["treatment_date", typ]][df_sup_1[typ] == v]
+    treat_dates_3 = x_in["treatment_date"].tolist()
+    days_3, weeks_3, months_3 = prepare_time_data(treat_dates_3)
+    plot_histogram_perc(months_3, l_m, f"{v} - {typ}\n Months distribution", "Month", "Percentage of samples")
+
+    # avulsion diagnosis
+    typ = "diagnosis"
+    v = '72 - AVULSION'
+    x_in = df_sup_1[["treatment_date", typ]][df_sup_1[typ] == v]
+    treat_dates_4 = x_in["treatment_date"].tolist()
+    days_4, weeks_4, months_4 = prepare_time_data(treat_dates_4)
+    plot_histogram_perc(months_4, l_m, f"{v} - {typ}\n Months distribution", "Month", "Percentage of samples")
+
+    # injured body parts
+    typ = "body_part"
+    v = '33 - LOWER ARM'
+    x_in = df_sup_1[["treatment_date", typ]][df_sup_1[typ] == v]
+    treat_dates_5 = x_in["treatment_date"].tolist()
+    days_5, weeks_5, months_5 = prepare_time_data(treat_dates_5)
+    plot_histogram_perc(months_5, l_m, f"{v} - {typ}\n Months distribution", "Month", "Percentage of samples")
+
+    # toe
+    typ = "body_part"
+    v = '93 - TOE'
+    x_in = df_sup_1[["treatment_date", typ]][df_sup_1[typ] == v]
+    treat_dates_8 = x_in["treatment_date"].tolist()
+    days_8, weeks_8, months_8 = prepare_time_data(treat_dates_8)
+    plot_histogram_perc(months_8, l_m, f"{v} - {typ}\n Months distribution", "Month", "Percentage of samples")
