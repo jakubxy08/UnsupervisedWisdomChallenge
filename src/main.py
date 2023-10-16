@@ -1,4 +1,5 @@
 """Analysis of unsupervised wisdom data."""
+import datetime
 import json
 import os
 import pickle
@@ -1392,6 +1393,46 @@ def plot_histogram(values: list[float | str], title: str, x_label: str, y_label:
     plt.show()
 
 
+def prepare_time_data(x: list[float]) -> tuple[list[str], list[str], list[str]]:
+    """
+    Convert a list of date strings into lists of days, weeks, and months.
+
+    Parameters
+    ----------
+    x : list[float]
+        A list of date strings in the format "YYYY-MM-DD".
+
+    Returns
+    -------
+    tuple[list[str], list[str], list[str]]
+        Three lists containing:
+        1. The day of the week corresponding to each date.
+        2. The week number (starting on Monday) of the year corresponding to each date.
+        3. The month number corresponding to each date.
+
+    Notes
+    -----
+    The function uses Python's datetime module to process and format the date strings.
+    A progress bar is displayed using the tqdm module as each date string is processed.
+
+    """
+    days = []
+    weeks = []
+    months = []
+    for e in tqdm(x):
+        date_string = e
+        date_object = datetime.datetime.strptime(date_string, "%Y-%m-%d")
+        day_of_week = date_object.strftime("%A")
+        week_number_monday = date_object.strftime("%W")
+        month_number = date_object.strftime("%m")
+
+        days.append(day_of_week)
+        weeks.append(week_number_monday)
+        months.append(month_number)
+
+    return days, weeks, months
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -1655,3 +1696,11 @@ if __name__ == "__main__":
     plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 15, 15, bar_width=0.5, horizontal=True)
 
     # check time patterns
+    df_sup = pd.read_csv("data/supplementary_data.csv")
+    vm_1 = json.load(open("data/variable_mapping.json"))
+    df_sup_1 = fill_variables(df_sup, vm_1)
+    print(df_sup_1.shape)
+
+    # age distribution
+    ages = df_sup_1["age"].tolist()
+    plot_histogram(ages, "Age distribution", "Age", "Number of samples", bins=100)
