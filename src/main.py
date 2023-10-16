@@ -1355,6 +1355,43 @@ def plot_stats(
     plt.show()
 
 
+def plot_histogram(values: list[float | str], title: str, x_label: str, y_label: str, bins: int = 10) -> None:
+    """
+    Generate and displays a histogram for the given set of values.
+
+    The function takes in a list of values, plot settings such as title, x-label, y-label, and bin size.
+    It then creates and displays the histogram using the provided settings.
+
+    Parameters
+    ----------
+    values : list[float | str]
+        List of numerical or string values for which the histogram is to be plotted.
+
+    title : str
+        Title of the histogram.
+
+    x_label : str
+        Label for the x-axis.
+
+    y_label : str
+        Label for the y-axis.
+
+    bins : int, optional (default=10)
+        Number of bins to be used in the histogram.
+
+    Returns
+    -------
+    None
+        The function displays the histogram and does not return any value.
+
+    """
+    plt.hist(values, bins=bins)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.show()
+
+
 if __name__ == "__main__":
     # set up
     nltk.download("punkt")
@@ -1617,3 +1654,4 @@ if __name__ == "__main__":
     data = prepare_stats_to_plot(tp_2, t1, t2)
     plot_stats(data, f"Groups of {t1}", "Percentage usage", t1, 15, 15, bar_width=0.5, horizontal=True)
 
+    # check time patterns
